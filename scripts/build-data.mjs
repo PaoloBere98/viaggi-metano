@@ -43,7 +43,9 @@ async function fetchMimit(name) {
       return decodeMimit(new Uint8Array(await res.arrayBuffer()));
     } catch (e) {
       lastErr = e;
-      console.log(`  tentativo ${attempt} fallito: ${e.message}`);
+      const cause = e.cause ? ` (${e.cause.code ?? e.cause.message ?? e.cause})` : '';
+      lastErr = new Error(`${e.message}${cause}`);
+      console.log(`  tentativo ${attempt} fallito: ${e.message}${cause}`);
       await new Promise((r) => setTimeout(r, 5000 * attempt));
     }
   }
@@ -220,6 +222,8 @@ async function main() {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((e) => {
     console.error(`ERRORE: ${e.message}`);
+    // su GitHub Actions l'errore compare anche come annotazione nel riepilogo dell'esecuzione
+    if (process.env.GITHUB_ACTIONS) console.log(`::error title=Aggiornamento dati::${e.message.replace(/\r?\n/g, ' ')}`);
     process.exit(1);
   });
 }

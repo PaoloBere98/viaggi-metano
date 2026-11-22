@@ -35,14 +35,15 @@ jobs:
         run: npm test
 
       - name: Aggiorna dati MIMIT + OSM
-        # Su push si pubblicano i dati già nel repository; l'aggiornamento gira
-        # su pianificazione o a mano. Se fallisce, il job si ferma e resta online
-        # la versione precedente (meglio dati di ieri che dati sbagliati).
-        if: github.event_name != 'push'
+        # Se l'aggiornamento fallisce (fonte irraggiungibile, formato cambiato) il sito
+        # viene comunque pubblicato con i dati precedenti: l'app mostra la loro data e
+        # avvisa quando sono vecchi. L'errore compare come annotazione dell'esecuzione.
+        id: data
+        continue-on-error: true
         run: npm run build-data
 
       - name: Salva i dati nel repository
-        if: github.event_name != 'push'
+        if: steps.data.outcome == 'success'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

@@ -31,8 +31,9 @@ export async function fetchOverpass({ query = OVERPASS_QUERY, fetchImpl = fetch,
       if (!Array.isArray(json.elements)) throw new Error('risposta senza "elements"');
       return json;
     } catch (e) {
-      lastErr = e;
-      log(`  fallito: ${e.message}`);
+      const cause = e.cause ? ` (${e.cause.code ?? e.cause.message ?? e.cause})` : '';
+      lastErr = new Error(`${url}: ${e.message}${cause}`);
+      log(`  fallito: ${e.message}${cause}`);
     }
   }
   throw new Error(`Overpass non raggiungibile: ${lastErr?.message}`);
