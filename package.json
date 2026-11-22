@@ -1,0 +1,20 @@
+{
+  "name": "viaggi-metano",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pianificatore di viaggi in Italia per auto a metano (PWA)",
+  "type": "module",
+  "scripts": {
+    "build-data": "node scripts/build-data.mjs",
+    "vendor": "node scripts/vendor.mjs",
+    "serve": "node scripts/serve.mjs",
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "leaflet": "^1.9.4",
+    "opening_hours": "^3.16.0"
+  }
+}
