@@ -5,7 +5,7 @@
 
 // Cambiare VERSION a ogni modifica di HTML/CSS/JS: i telefoni scaricano il nuovo guscio
 // e cancellano la cache precedente.
-const VERSION = 'v5';
+const VERSION = 'v6';
 const SHELL = `shell-${VERSION}`;
 const DATA = 'data';
 

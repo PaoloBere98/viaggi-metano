@@ -214,6 +214,9 @@ button { cursor: pointer; }
 .dialog::backdrop { background: rgb(0 0 0 / 0.45); }
 .dialog-body { padding: 20px 16px 16px; max-height: 85vh; overflow-y: auto; }
 .dialog-actions { margin-top: 16px; }
+.key-check { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; font-size: 0.9rem; }
+.key-check .ok { color: var(--ok); font-weight: 600; }
+.key-check .bad { color: var(--bad); font-weight: 600; }
 .reports-list { list-style: none; padding: 0; margin: 0; }
 .reports-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
 

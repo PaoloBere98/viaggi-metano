@@ -1,5 +1,5 @@
 // Controller dell'app: form, calcolo, rendering, segnalazioni, impostazioni.
-import { OrsClient } from './lib/ors.js';
+import { OrsClient, cleanKey } from './lib/ors.js';
 import { GooglePlacesClient, hoursFromPlace } from './lib/google.js';
 import { planTrip } from './lib/trip.js';
 import { evaluateStation, REPORT } from './lib/opening.js';
@@ -358,6 +358,7 @@ function openSettings(reason) {
   $('google-key').value = state.settings.googleKey ?? '';
   $('settings-reason').textContent = reason ?? '';
   $('settings-reason').hidden = !reason;
+  $('ors-check').textContent = '';
   renderReportsList(state.reports, $('reports-list'));
   $('settings-data').textContent = dataInfoText();
   $('settings').showModal();
@@ -367,11 +368,28 @@ function setupSettings() {
   $('btn-settings').addEventListener('click', () => openSettings());
   $('settings-form').addEventListener('submit', (e) => {
     if (e.submitter?.value !== 'save') return; // chiusura senza salvare
-    state.settings.orsKey = $('ors-key').value.trim();
+    state.settings.orsKey = cleanKey($('ors-key').value);
     const g = $('google-key').value.trim();
     if (g !== state.settings.googleKey) state.google.clear();
     state.settings.googleKey = g;
     store.saveSettings(state.settings);
+  });
+  $('btn-check-ors').addEventListener('click', async () => {
+    const out = $('ors-check');
+    const key = cleanKey($('ors-key').value);
+    $('ors-key').value = key; // mostra la chiave già ripulita
+    out.className = '';
+    out.textContent = 'Verifico…';
+    try {
+      const res = await new OrsClient(key).autocomplete('Roma');
+      out.className = 'ok';
+      out.textContent = res.length ? `✅ Chiave valida (${key.length} caratteri). Ricordati di salvare.` : '✅ Chiave valida.';
+    } catch (err) {
+      out.className = 'bad';
+      out.textContent = `❌ ${err.status === 0 && navigator.onLine !== false
+        ? `Chiave rifiutata o incompleta (${key.length} caratteri; una chiave completa ne ha circa 120). Ricopiala dalla dashboard di openrouteservice.org.`
+        : err.message}`;
+    }
   });
   $('settings').addEventListener('click', (e) => {
     const t = e.target.closest('[data-toggle-visibility]');

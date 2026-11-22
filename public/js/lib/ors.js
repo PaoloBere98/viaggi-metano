@@ -21,11 +21,21 @@ function explain(status, body) {
   return `Errore OpenRouteService (${status})${detail ? ': ' + detail : ''}`;
 }
 
+/**
+ * Ripulisce una chiave incollata: toglie spazi, a capo e caratteri invisibili
+ * (es. spazi a larghezza zero copiati da chat o note), che renderebbero la chiave errata
+ * o farebbero fallire la richiesta. Le chiavi ORS contengono solo caratteri ASCII stampabili.
+ */
+export function cleanKey(key) {
+  return String(key ?? '').replace(/[^\x21-\x7E]/g, '');
+}
+
 export class OrsClient {
   /** @param {string} apiKey  @param {typeof fetch} [fetchImpl] */
   constructor(apiKey, fetchImpl = globalThis.fetch.bind(globalThis)) {
-    if (!apiKey) throw new OrsError('Manca la chiave OpenRouteService: inseriscila nelle impostazioni.', 0);
-    this.key = apiKey;
+    const key = cleanKey(apiKey);
+    if (!key) throw new OrsError('Manca la chiave OpenRouteService: inseriscila nelle impostazioni.', 0);
+    this.key = key;
     this.fetch = fetchImpl;
   }
 
@@ -35,7 +45,15 @@ export class OrsClient {
       res = await this.fetch(url, init);
     } catch (e) {
       if (e.name === 'AbortError') throw e;
-      throw new OrsError('Connessione a OpenRouteService non riuscita. Sei online?', 0);
+      if (globalThis.navigator?.onLine === false) {
+        throw new OrsError('Sei offline: serve una connessione per calcolare il percorso.', 0);
+      }
+      // Con una chiave errata OpenRouteService risponde 403 senza le intestazioni CORS:
+      // il browser vede solo un errore di rete generico, indistinguibile da un problema di linea.
+      throw new OrsError(
+        'OpenRouteService non risponde o ha rifiutato la richiesta. Quasi sempre è la chiave: ' +
+        'ricopiala intera nelle impostazioni e premi "Verifica chiave".', 0,
+      );
     }
     const body = await res.json().catch(() => null);
     if (!res.ok) throw new OrsError(explain(res.status, body), res.status);

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { prepareRoute, findCorridorStations, pointAtKm, DETOUR_ROAD_FACTOR } from '../public/js/lib/corridor.js';
-import { OrsClient, OrsError, routeFromGeoJson } from '../public/js/lib/ors.js';
+import { OrsClient, OrsError, routeFromGeoJson, cleanKey } from '../public/js/lib/ors.js';
 
 // Percorso sintetico: lungo il meridiano 9°E da 44°N a 46°N (≈ 222,4 km), un punto ogni 0,01°.
 const LINE = Array.from({ length: 201 }, (_, i) => [9, 44 + i * 0.01]);
@@ -161,9 +161,19 @@ test('OrsClient: errori tradotti in italiano', async () => {
     const ors = new OrsClient('KEY', mockFetch(() => ({ status, body: { error: 'x' } })));
     await assert.rejects(ors.autocomplete('Roma'), (e) => e instanceof OrsError && re.test(e.message) && e.status === status);
   }
-  const offline = new OrsClient('KEY', async () => { throw new TypeError('Failed to fetch'); });
-  await assert.rejects(offline.autocomplete('Roma'), /Sei online/);
+  // errore di rete generico (es. chiave errata: 403 senza CORS) -> si indica la chiave
+  const rejected = new OrsClient('KEY', async () => { throw new TypeError('Failed to fetch'); });
+  await assert.rejects(rejected.autocomplete('Roma'), /chiave/);
   assert.throws(() => new OrsClient(''), /Manca la chiave/);
+  assert.throws(() => new OrsClient(' ​\n'), /Manca la chiave/);
+});
+
+test('cleanKey: spazi, a capo e caratteri invisibili tolti', async () => {
+  assert.equal(cleanKey('  abc=\n'), 'abc=');
+  assert.equal(cleanKey('​eyJ ab c﻿'), 'eyJabc');
+  const f = mockFetch(() => ({ body: { features: [] } }));
+  await new OrsClient(' K​EY \n', f).autocomplete('Roma');
+  assert.equal(new URL(f.calls[0].url).searchParams.get('api_key'), 'KEY');
 });
 
 test('OrsClient.measureDetour: deviazione reale e carreggiata opposta', async () => {
