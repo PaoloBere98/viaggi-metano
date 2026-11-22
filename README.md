@@ -126,6 +126,38 @@ l'aggiornamento si ferma basta riattivarlo dalla scheda Actions.
 - **Nessun piano**: si indica l'ultimo punto raggiungibile, il buco in km, i distributori
   chiusi al passaggio e se il buco si copre bruciando la riserva o solo con la benzina.
 
+## Orari Google (facoltativi)
+
+Con una propria chiave Google, l'app chiede gli orari a Google Places (New) **solo per le
+soste scelte e le loro riserve** (di solito 2–8 distributori per viaggio), mai per tutti.
+Gli orari Google hanno la precedenza su OSM e includono gli orari speciali dei festivi
+per i 7 giorni successivi. Oltre i 7 giorni, in un festivo Google non viene usato.
+
+Rispetto dei termini Google: si conserva sul telefono solo il *place ID* (consentito);
+orari e nomi dei luoghi restano in memoria finché l'app è aperta e non vengono salvati
+(nemmeno nell'ultimo piano conservato per l'uso offline).
+
+### Creare e proteggere la chiave
+
+1. [console.cloud.google.com](https://console.cloud.google.com/): crea un progetto e attiva
+   la fatturazione (richiesta da Google anche per l'uso gratuito).
+2. *API e servizi → Libreria*: attiva **Places API (New)**.
+3. *API e servizi → Credenziali → Crea credenziali → Chiave API*, poi modificala:
+   - **Restrizioni applicazione → Referrer HTTP (siti web)**, aggiungi:
+     `https://paolobere98.github.io/viaggi-metano/*` (e `http://localhost:8080/*` per le prove);
+   - **Restrizioni API → Limita chiave → Places API (New)**.
+4. Facoltativo ma consigliato: in *Places API (New) → Quote* imposta un tetto giornaliero
+   basso (es. 100 richieste al giorno) per non avere mai sorprese in fattura.
+5. Incolla la chiave in ⚙️ Impostazioni dell'app.
+
+Costi: per ogni distributore servono una ricerca "solo ID" (Text Search Essentials IDs Only)
+e una richiesta di dettagli con gli orari (Place Details Enterprise, con una quota mensile
+gratuita). Il place ID viene riusato, quindi dal secondo viaggio sugli stessi distributori
+serve solo la richiesta di dettagli. Per un uso personale si resta nella quota gratuita.
+
+Con la restrizione per referrer la chiave funziona solo dalle pagine dell'app: anche se
+qualcuno la vedesse, non potrebbe usarla da altri siti.
+
 ## Licenze
 
 - opening_hours.js: LGPL-3.0 (libreria non modificata)

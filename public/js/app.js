@@ -1,5 +1,6 @@
 // Controller dell'app: form, calcolo, rendering, segnalazioni, impostazioni.
 import { OrsClient } from './lib/ors.js';
+import { GooglePlacesClient, hoursFromPlace } from './lib/google.js';
 import { planTrip } from './lib/trip.js';
 import { evaluateStation, REPORT } from './lib/opening.js';
 import { holidayOn, italianWeekday, italianDateKey } from './lib/festivi.js';
@@ -22,6 +23,8 @@ const state = {
   vm: null,
   map: null,
   geo: null, // ultima posizione nota, per dare priorità ai suggerimenti vicini
+  // Orari Google per id distributore: solo in memoria, mai salvati (termini Google).
+  google: new Map(),
 };
 
 // ---------------------------------------------------------------- messaggi
@@ -167,8 +170,45 @@ function useCurrentPosition() {
 // ---------------------------------------------------------------- calcolo
 
 function evaluator() {
-  const ctx = { reports: state.reports, osmTimestamp: state.data?.sources.osm.timestamp };
+  const ctx = { reports: state.reports, osmTimestamp: state.data?.sources.osm.timestamp, google: state.google };
   return (station, when) => evaluateStation(station, when, ctx);
+}
+
+const PLACE_ID_RETRY_DAYS = 30;
+
+/**
+ * Recupera da Google gli orari dei distributori indicati (soste e riserve del piano).
+ * Il place ID si conserva (consentito dai termini Google); gli orari restano in memoria.
+ * @returns {Promise<{added: number, error: string|null}>}
+ */
+async function fetchGoogleHours(stations) {
+  const key = state.settings.googleKey?.trim();
+  if (!key) return { added: 0, error: null };
+  const client = new GooglePlacesClient(key);
+  const ids = store.load('placeIds', {});
+  let added = 0;
+  try {
+    for (const st of stations) {
+      if (state.google.has(st.id)) continue;
+      let cached = ids[st.id];
+      const stale = cached && !cached.placeId && Date.now() - cached.t > PLACE_ID_RETRY_DAYS * 86_400_000;
+      if (!cached || stale) {
+        cached = { placeId: await client.findPlaceId(st), t: Date.now() };
+        ids[st.id] = cached;
+        store.save('placeIds', ids);
+      }
+      if (!cached.placeId) {
+        state.google.set(st.id, { isOpenAt: () => null, fetchedAt: null, note: null });
+        continue;
+      }
+      const place = await client.details(cached.placeId);
+      state.google.set(st.id, hoursFromPlace(place, new Date(), (d) => holidayOn(d) !== null, st));
+      added++;
+    }
+    return { added, error: null };
+  } catch (e) {
+    return { added, error: e.message };
+  }
 }
 
 /** Client ORS con memoria delle deviazioni già misurate (per ripianificare senza rifare richieste). */
@@ -188,7 +228,31 @@ function measuringClient(cache) {
 async function runPlan() {
   const L = state.live;
   const evaluate = evaluator();
-  const result = await planTrip({
+  let result = await planOnce(L, evaluate);
+  // Orari Google per soste e riserve; se cambiano lo stato, nuovo piano (al massimo 3 giri).
+  const googleNotes = [];
+  for (let round = 0; round < 3 && state.settings.googleKey && result.plan.ok; round++) {
+    const chosen = result.plan.stops.flatMap((s) => [s.station, s.backup?.station].filter(Boolean));
+    showMessage('Controllo gli orari su Google…', 'busy');
+    const { added, error } = await fetchGoogleHours(chosen);
+    if (error) googleNotes.push(`Orari Google non disponibili: ${error}`);
+    if (!added) break;
+    const before = result.plan.stops.map((s) => `${s.station.id}:${s.evaluation.status}`).join();
+    result = await planOnce(L, evaluate);
+    if (!result.plan.ok || result.plan.stops.map((s) => `${s.station.id}:${s.evaluation.status}`).join() === before) break;
+  }
+  result.notes.push(...googleNotes);
+  const vm = buildViewModel({
+    from: L.from, to: L.to, departure: L.departure, startKm: L.startKm,
+    settings: { ...L.settings, orsKey: undefined, googleKey: undefined }, route: L.route, result, evaluate,
+  });
+  showResult(vm);
+  // L'ultimo piano si conserva per l'uso offline, ma senza i contenuti Google (nomi dei luoghi).
+  store.save('lastPlan', JSON.parse(JSON.stringify(vm), (k, v) => (k === 'notes' && Array.isArray(v) ? v.filter((n) => !String(n).startsWith('Google:')) : v)));
+}
+
+function planOnce(L, evaluate) {
+  return planTrip({
     route: L.route,
     stations: state.data.stations,
     departure: L.departure,
@@ -206,12 +270,6 @@ async function runPlan() {
     fallbackPrice: state.data.avgPrice,
     onProgress: (m) => showMessage(m, 'busy'),
   });
-  const vm = buildViewModel({
-    from: L.from, to: L.to, departure: L.departure, startKm: L.startKm,
-    settings: { ...L.settings, orsKey: undefined }, route: L.route, result, evaluate,
-  });
-  showResult(vm);
-  store.save('lastPlan', vm);
 }
 
 async function onSubmit(ev, ac) {
@@ -297,6 +355,7 @@ async function onReportClick(btn) {
 
 function openSettings(reason) {
   $('ors-key').value = state.settings.orsKey;
+  $('google-key').value = state.settings.googleKey ?? '';
   $('settings-reason').textContent = reason ?? '';
   $('settings-reason').hidden = !reason;
   renderReportsList(state.reports, $('reports-list'));
@@ -309,6 +368,9 @@ function setupSettings() {
   $('settings-form').addEventListener('submit', (e) => {
     if (e.submitter?.value !== 'save') return; // chiusura senza salvare
     state.settings.orsKey = $('ors-key').value.trim();
+    const g = $('google-key').value.trim();
+    if (g !== state.settings.googleKey) state.google.clear();
+    state.settings.googleKey = g;
     store.saveSettings(state.settings);
   });
   $('settings').addEventListener('click', (e) => {

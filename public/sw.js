@@ -5,7 +5,7 @@
 
 // Cambiare VERSION a ogni modifica di HTML/CSS/JS: i telefoni scaricano il nuovo guscio
 // e cancellano la cache precedente.
-const VERSION = 'v4';
+const VERSION = 'v5';
 const SHELL = `shell-${VERSION}`;
 const DATA = 'data';
 
@@ -16,7 +16,7 @@ const SHELL_FILES = [
   'css/app.css',
   'js/app.js',
   'js/lib/geo.js', 'js/lib/corridor.js', 'js/lib/ors.js', 'js/lib/festivi.js',
-  'js/lib/opening.js', 'js/lib/planner.js', 'js/lib/trip.js', 'js/lib/navlinks.js',
+  'js/lib/opening.js', 'js/lib/planner.js', 'js/lib/trip.js', 'js/lib/navlinks.js', 'js/lib/google.js',
   'js/ui/autocomplete.js', 'js/ui/format.js', 'js/ui/mapview.js', 'js/ui/render.js',
   'js/ui/store.js', 'js/ui/viewmodel.js',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css',

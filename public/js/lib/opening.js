@@ -118,6 +118,7 @@ function evaluateCore(station, when, ctx) {
   const g = ctx.google?.get(station.id);
   if (g) {
     const open = g.isOpenAt(when);
+    if (g.note) notes.push(`${g.note}.`);
     if (open === true || open === false) {
       return {
         status: open ? STATUS.OPEN : STATUS.CLOSED,

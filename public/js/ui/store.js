@@ -29,6 +29,7 @@ export function remove(key) {
 
 export const DEFAULT_SETTINGS = Object.freeze({
   orsKey: '',
+  googleKey: '',
   rangeKm: 350,
   safetyPct: 75,
   maxDistKm: 5,
