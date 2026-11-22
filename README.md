@@ -80,6 +80,22 @@ così i telefoni con l'app installata scaricano la nuova versione.
    `public/data/metano.json`, lo salva nel repository e pubblica il sito. Si può avviare
    a mano da **Actions → Run workflow**.
 
+### Proxy Cloudflare per i file MIMIT
+
+Il sito del MIMIT rifiuta le connessioni dai server di GitHub Actions (verificato il
+22/11/2026: timeout di connessione), mentre accetta quelle da Cloudflare. Il workflow
+scarica quindi i due CSV attraverso un piccolo Cloudflare Worker
+([cloudflare/mimit-proxy.js](cloudflare/mimit-proxy.js)), che serve solo quei due file
+e solo a chi presenta il segreto condiviso.
+
+1. Cloudflare → Workers & Pages → crea un worker (es. `mimit-proxy`) e incolla il codice.
+2. Nel worker, Settings → Variables and Secrets: segreto `PROXY_TOKEN` (stringa casuale lunga).
+3. Su GitHub, Settings → Secrets and variables → Actions:
+   `MIMIT_PROXY_URL` (indirizzo `https://….workers.dev`) e `MIMIT_PROXY_TOKEN` (stesso segreto).
+
+Senza questi segreti il workflow prova il sito MIMIT diretto; se fallisce pubblica il sito
+con i dati precedenti e segnala l'errore come annotazione dell'esecuzione.
+
 Nota: GitHub disattiva i workflow pianificati dopo 60 giorni senza attività nel
 repository; i commit automatici dei dati di solito bastano a tenerlo attivo, ma se
 l'aggiornamento si ferma basta riattivarlo dalla scheda Actions.
