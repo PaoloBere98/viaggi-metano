@@ -12,7 +12,7 @@ import { fmtDate, fmtDayTime, fmtKm, toLocalInputValue } from './ui/format.js';
 import * as store from './ui/store.js';
 
 /** Uguale a VERSION in sw.js: mostrata nelle impostazioni per capire quale codice gira. */
-const APP_VERSION = 'v7';
+const APP_VERSION = 'v8';
 const $ = (id) => document.getElementById(id);
 const DATA_MAX_AGE_DAYS = 3;
 
@@ -380,6 +380,11 @@ function setupSettings() {
     const out = $('ors-check');
     const key = cleanKey($('ors-key').value);
     $('ors-key').value = key; // mostra la chiave già ripulita
+    if (!key) {
+      out.className = 'bad';
+      out.textContent = '❌ Incolla prima la chiave nel campo qui sopra.';
+      return;
+    }
     out.className = '';
     out.textContent = 'Verifico…';
     try {

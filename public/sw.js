@@ -5,7 +5,7 @@
 
 // Cambiare VERSION (e APP_VERSION in js/app.js) a ogni modifica di HTML/CSS/JS:
 // i telefoni scaricano il nuovo guscio e cancellano la cache precedente.
-const VERSION = 'v7';
+const VERSION = 'v8';
 const SHELL = `shell-${VERSION}`;
 const DATA = 'data';
 
