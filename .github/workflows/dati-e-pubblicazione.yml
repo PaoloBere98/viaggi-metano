@@ -35,20 +35,30 @@ jobs:
         run: npm test
 
       - name: Scarica i file MIMIT
-        # curl con timeout di connessione lungo e più tentativi: il sito MIMIT dai server
-        # di GitHub può essere lento ad accettare connessioni.
+        # Il sito MIMIT rifiuta le connessioni dai server di GitHub: i file passano dal
+        # proxy Cloudflare (cloudflare/mimit-proxy.js), indicato dai segreti del repository
+        # MIMIT_PROXY_URL e MIMIT_PROXY_TOKEN. Senza segreti si prova il sito diretto.
         id: mimit
         continue-on-error: true
+        env:
+          PROXY_URL: ${{ secrets.MIMIT_PROXY_URL }}
+          PROXY_TOKEN: ${{ secrets.MIMIT_PROXY_TOKEN }}
         run: |
           mkdir -p "$RUNNER_TEMP/mimit"
+          if [ -n "$PROXY_URL" ]; then
+            base="${PROXY_URL%/}/"; auth=(-H "X-Proxy-Token: $PROXY_TOKEN"); src="proxy Cloudflare"
+          else
+            base="https://www.mimit.gov.it/images/exportCSV/"; auth=(); src="sito MIMIT diretto"
+          fi
+          echo "Fonte: $src"
           for f in anagrafica_impianti_attivi.csv prezzo_alle_8.csv; do
-            if ! curl -sS -L --fail -A "Mozilla/5.0 (compatible; viaggi-metano-data/1.0)" \
-                 --connect-timeout 60 --max-time 300 --retry 4 --retry-delay 20 --retry-all-errors \
-                 -o "$RUNNER_TEMP/mimit/$f" "https://www.mimit.gov.it/images/exportCSV/$f"; then
-              echo "::error title=Download MIMIT::$f non scaricabile dai server di GitHub"
+            if ! curl -sS -L --fail "${auth[@]}" -A "Mozilla/5.0 (compatible; viaggi-metano-data/1.0)" \
+                 --connect-timeout 30 --max-time 180 --retry 2 --retry-delay 15 --retry-all-errors \
+                 -o "$RUNNER_TEMP/mimit/$f" "$base$f"; then
+              echo "::error title=Download MIMIT::$f non scaricabile ($src)"
               exit 1
             fi
-            echo "$f: $(wc -c < "$RUNNER_TEMP/mimit/$f") byte"
+            echo "$f: $(wc -c < "$RUNNER_TEMP/mimit/$f") byte, $(head -c 40 "$RUNNER_TEMP/mimit/$f" | head -n 1)"
           done
 
       - name: Aggiorna dati MIMIT + OSM
