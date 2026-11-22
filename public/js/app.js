@@ -11,6 +11,8 @@ import { MapView } from './ui/mapview.js';
 import { fmtDate, fmtDayTime, fmtKm, toLocalInputValue } from './ui/format.js';
 import * as store from './ui/store.js';
 
+/** Uguale a VERSION in sw.js: mostrata nelle impostazioni per capire quale codice gira. */
+const APP_VERSION = 'v7';
 const $ = (id) => document.getElementById(id);
 const DATA_MAX_AGE_DAYS = 3;
 
@@ -360,7 +362,7 @@ function openSettings(reason) {
   $('settings-reason').hidden = !reason;
   $('ors-check').textContent = '';
   renderReportsList(state.reports, $('reports-list'));
-  $('settings-data').textContent = dataInfoText();
+  $('settings-data').textContent = `${dataInfoText()} · versione app ${APP_VERSION}`;
   $('settings').showModal();
 }
 

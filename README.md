@@ -70,7 +70,8 @@ node scripts/icons.mjs     # rigenera le icone PNG
 ```
 
 Dopo ogni modifica a HTML/CSS/JS da pubblicare, aumentare `VERSION` in `public/sw.js`
-così i telefoni con l'app installata scaricano la nuova versione.
+e `APP_VERSION` in `public/js/app.js` (stesso valore): i telefoni con l'app installata
+scaricano la nuova versione, e in ⚙️ Impostazioni si vede quale versione del codice gira.
 
 ## Pubblicazione (GitHub Pages)
 

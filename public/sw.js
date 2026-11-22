@@ -3,9 +3,9 @@
 //  - data/metano.json: prima la rete (dati del giorno), la cache se offline
 //  - tile della mappa e API esterne: non gestite (cache HTTP del browser)
 
-// Cambiare VERSION a ogni modifica di HTML/CSS/JS: i telefoni scaricano il nuovo guscio
-// e cancellano la cache precedente.
-const VERSION = 'v6';
+// Cambiare VERSION (e APP_VERSION in js/app.js) a ogni modifica di HTML/CSS/JS:
+// i telefoni scaricano il nuovo guscio e cancellano la cache precedente.
+const VERSION = 'v7';
 const SHELL = `shell-${VERSION}`;
 const DATA = 'data';
 
@@ -26,7 +26,13 @@ const SHELL_FILES = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(SHELL).then((c) => c.addAll(SHELL_FILES)).then(() => self.skipWaiting()));
+  // cache: 'reload' scavalca la cache HTTP del browser (GitHub Pages la tiene 10 minuti):
+  // senza, una nuova versione potrebbe mescolare file nuovi e vecchi.
+  e.waitUntil(
+    caches.open(SHELL)
+      .then((c) => c.addAll(SHELL_FILES.map((u) => new Request(u, { cache: 'reload' }))))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', (e) => {
@@ -63,7 +69,7 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.open(SHELL).then(async (cache) => {
       const cached = await cache.match(e.request, { ignoreSearch: true });
-      const network = fetch(e.request)
+      const network = fetch(e.request, { cache: 'no-cache' }) // ricontrolla sempre col server
         .then((res) => {
           if (res.ok) cache.put(e.request, res.clone());
           return res;
