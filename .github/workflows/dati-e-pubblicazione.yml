@@ -34,13 +34,31 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Scarica i file MIMIT
+        # curl con timeout di connessione lungo e più tentativi: il sito MIMIT dai server
+        # di GitHub può essere lento ad accettare connessioni.
+        id: mimit
+        continue-on-error: true
+        run: |
+          mkdir -p "$RUNNER_TEMP/mimit"
+          for f in anagrafica_impianti_attivi.csv prezzo_alle_8.csv; do
+            if ! curl -sS -L --fail -A "Mozilla/5.0 (compatible; viaggi-metano-data/1.0)" \
+                 --connect-timeout 60 --max-time 300 --retry 4 --retry-delay 20 --retry-all-errors \
+                 -o "$RUNNER_TEMP/mimit/$f" "https://www.mimit.gov.it/images/exportCSV/$f"; then
+              echo "::error title=Download MIMIT::$f non scaricabile dai server di GitHub"
+              exit 1
+            fi
+            echo "$f: $(wc -c < "$RUNNER_TEMP/mimit/$f") byte"
+          done
+
       - name: Aggiorna dati MIMIT + OSM
         # Se l'aggiornamento fallisce (fonte irraggiungibile, formato cambiato) il sito
         # viene comunque pubblicato con i dati precedenti: l'app mostra la loro data e
         # avvisa quando sono vecchi. L'errore compare come annotazione dell'esecuzione.
         id: data
+        if: steps.mimit.outcome == 'success'
         continue-on-error: true
-        run: npm run build-data
+        run: node scripts/build-data.mjs --mimit-dir "$RUNNER_TEMP/mimit"
 
       - name: Salva i dati nel repository
         if: steps.data.outcome == 'success'
